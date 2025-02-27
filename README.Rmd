@@ -1,0 +1,143 @@
+---
+title: "SpatialR"
+author: "Moegamad Uzair Jack"
+date: "2025-02-24"
+output: rmarkdown::github_document
+always_allow_html: true
+---
+
+## Loading packages
+Loading all necessary packages
+```{r}
+# Load libraries
+library(rgbif)      # Access GBIF data
+library(sf)         # Handle spatial data
+library(ggplot2)    # Create the map
+library(dplyr)      # Data wrangling
+library(viridis)    # Beautiful color scales
+library(leaflet)
+```
+## Get Nightjar Data from GBIF
+We’ll query GBIF for Caprimulgidae sightings, limited to 1000 records for simplicity.
+```{r}
+# Get the GBIF species key for the Nightjar family (Caprimulgidae)
+nightjar_family_key <- name_backbone(name = "Caprimulgidae")$familyKey
+
+# Search for nightjar occurrence data
+nightjar_data <- occ_search(
+  taxonKey = nightjar_family_key,
+  hasCoordinate = TRUE,   # Only include records with coordinates
+  limit = 1000            # Limit for demonstration purposes
+)
+
+```
+
+## Clean and Prepare Data
+Select the important columns and remove any rows missing coordinates
+```{r}
+# Clean and prepare the data
+nightjar_sightings <- nightjar_data$data %>%
+  select(species, decimalLatitude, decimalLongitude, eventDate, country, individualCount) %>%
+  na.omit()  # Removes rows with any NA values
+
+
+
+```
+## Convert to Spatial Data
+Turn this into an sf (Simple Features) object so it’s ready for mapping.
+```{r}
+nightjar_sf <- st_as_sf(nightjar_sightings,
+                        coords = c("decimalLongitude", "decimalLatitude"),
+                        crs = 4326)  # WGS84 projection
+
+
+```
+## Interactive Nightjar Sightings Map
+
+Create an interactive map where you can zoom, pan, and click on individual sightings to see details.
+
+```{r}
+# Ensure individualCount is numeric and remove any NAs just in case
+nightjar_sf$individualCount <- as.numeric(nightjar_sf$individualCount)
+nightjar_sf <- nightjar_sf %>%
+  filter(!is.na(individualCount))
+
+# Create a color palette for individualCount
+color_palette <- colorNumeric(palette = "viridis", domain = 
+                                nightjar_sf$individualCount)
+
+# Map with the fixed color function
+leaflet(nightjar_sf) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    radius = ~sqrt(individualCount + 1),
+    color = ~color_palette(individualCount),  # Fixed color function
+    fillOpacity = 0.8,
+    popup = ~paste0(
+      "<strong>Species: </strong>", species,
+      "<br><strong>Count: </strong>", individualCount,
+      "<br><strong>Country: </strong>", country,
+      "<br><strong>Date: </strong>", eventDate
+    )
+  ) %>%
+  setView(lng = 0, lat = 0, zoom = 2)
+
+```
+
+## Custom Basemaps (For a Stylish Look)
+```{r}
+# Custom basemap with CartoDB Dark Matter
+leaflet(nightjar_sf) %>%
+  addProviderTiles(providers$Esri.WorldImagery) %>%  # Custom basemap
+  addCircleMarkers(
+    radius = ~sqrt(individualCount + 1),
+    color = ~colorNumeric(palette = "viridis", domain = 
+                            nightjar_sf$individualCount)(individualCount),
+    fillOpacity = 0.8,
+    popup = ~paste0(
+      "<strong>Species: </strong>", species,
+      "<br><strong>Count: </strong>", individualCount,
+      "<br><strong>Country: </strong>", country,
+      "<br><strong>Date: </strong>", eventDate
+    )
+  ) %>%
+  setView(lng = 0, lat = 0, zoom = 2)
+
+```
+## Interactive Nightjar Sightings Map
+Custom base map with species specific colour markers
+
+```{r}
+# Ensure individualCount is numeric and remove any NAs just in case
+nightjar_sf$individualCount <- as.numeric(nightjar_sf$individualCount)
+nightjar_sf <- nightjar_sf %>%
+  filter(!is.na(individualCount))
+
+# Create a color palette for species (categorical data)
+species_palette <- colorFactor(palette = "viridis", domain = nightjar_sf$species)
+
+# Map with species-based color function
+leaflet(nightjar_sf) %>%
+  addProviderTiles(providers$Esri.WorldImagery) %>%
+  addCircleMarkers(
+    radius = ~sqrt(individualCount + 10),
+    color = ~species_palette(species),  # Different color for each species
+    fillOpacity = 0.9,
+    popup = ~paste0(
+      "<strong>Species: </strong>", species,
+      "<br><strong>Count: </strong>", individualCount,
+      "<br><strong>Country: </strong>", country,
+      "<br><strong>Date: </strong>", eventDate
+    )
+  ) %>%
+  setView(lng = 0, lat = 0, zoom = 2) %>%
+  addLegend(
+    "bottomright",
+    pal = species_palette,
+    values = ~species,
+    title = "Nightjar Species",
+    opacity = 1
+  )
+
+```
+
