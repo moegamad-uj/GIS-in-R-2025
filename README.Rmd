@@ -16,6 +16,7 @@ library(ggplot2)    # Create the map
 library(dplyr)      # Data wrangling
 library(viridis)    # Beautiful color scales
 library(leaflet)
+library(htmlwidgets)
 ```
 ## Get Nightjar Data from GBIF
 We’ll query GBIF for Caprimulgidae sightings, limited to 1000 records for simplicity.
@@ -138,6 +139,7 @@ leaflet(nightjar_sf) %>%
     title = "Nightjar Species",
     opacity = 1
   )
+
 
 ```
 
