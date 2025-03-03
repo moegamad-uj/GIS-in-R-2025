@@ -1,0 +1,130 @@
+---
+title: "SpatialR"
+author: "Moegamad Uzair Jack"
+date: "2025-02-24"
+output: rmarkdown::html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+   echo = TRUE,      # Show code
+  message = FALSE,  # Hide package loading messages
+  warning = FALSE  # Hide warnings
+)
+
+```
+
+## Loading packages
+Loading all necessary packages
+```{r}
+# Load libraries
+library(rgbif)      # Access GBIF data
+library(sf)         # Handle spatial data
+library(ggplot2)    # Create the map
+library(dplyr)      # Data wrangling
+library(viridis)    # Colour scales
+library(leaflet)
+library(rnaturalearth)
+```
+## Get Nightjar Data from GBIF
+We’ll query GBIF for Caprimulgidae sightings, limited to 1000 records for simplicity.
+```{r}
+# Get the GBIF species key for the Nightjar family (Caprimulgidae)
+nightjar_family_key <- name_backbone(name = "Caprimulgidae")$familyKey
+
+# Search for occurrence data (optimized query)
+nightjar_data <- occ_search(
+  taxonKey = nightjar_family_key,
+  hasCoordinate = TRUE,
+  basisOfRecord = "HUMAN_OBSERVATION",
+  limit = 5000
+)
+```
+
+## Clean and Prepare Data
+Select the important columns and remove any rows missing coordinates
+```{r}
+# Clean and prepare the data
+nightjar_sightings <- nightjar_data$data %>%
+  select(species, decimalLatitude, decimalLongitude, eventDate, country, 
+         individualCount) %>%
+  na.omit()  # Removes rows with any NA values
+```
+## Convert to Spatial Data
+Turn this into an sf (Simple Features) object so it’s ready for mapping.
+```{r}
+nightjar_sf <- st_as_sf(nightjar_sightings,
+                        coords = c("decimalLongitude", "decimalLatitude"),
+                        crs = 4326)  # WGS84 projection
+
+
+```
+## Create  static map
+```{r}
+# Get a world map
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+# Create the map
+ggplot(data = world) +
+  geom_sf(color = "gray70") +
+  geom_point(data = nightjar_sf, 
+             aes(x = st_coordinates(nightjar_sf)[,1], 
+                 y = st_coordinates(nightjar_sf)[,2], 
+                 color = factor(species), 
+                 size = individualCount),
+             alpha = 0.7) +
+  scale_color_viridis_d(option = "plasma") +
+  theme_minimal() +
+  labs(title = "Global Nightjar Sightings",
+       x = "Longitude",
+       y = "Latitude",
+       color = "Species",
+       size = "Count")
+
+```
+
+## CRS corrections
+```{r}
+st_crs(nightjar_sf)
+
+```
+
+
+## Interactive Nightjar Sightings Map
+Create an interactive map where you can zoom, pan, and click on individual sightings to see details.
+Adding a Custom base map with species specific colour markers
+
+```{r}
+# Ensure individualCount is numeric and remove any NAs just in case
+nightjar_sf$individualCount <- as.numeric(nightjar_sf$individualCount)
+nightjar_sf <- nightjar_sf %>%
+  filter(!is.na(individualCount))
+
+# Create a color palette for species (categorical data)
+species_palette <- colorFactor(palette = "plasma", 
+                               domain = nightjar_sf$species)
+
+# Map with species-based color function
+leaflet(nightjar_sf) %>%
+  addProviderTiles(providers$Esri.WorldPhysical) %>%
+  addCircleMarkers(
+    radius = 3,  # Fixed size 
+    color = ~species_palette(species),  # Different color for each species
+    fillOpacity = 0.8,
+    popup = ~paste0(     # Creating popup with relevant infornmation
+      "<strong>Species: </strong>", species,
+      "<br><strong>Count: </strong>", individualCount,
+      "<br><strong>Country: </strong>", country,
+      "<br><strong>Date: </strong>", eventDate
+    )
+  ) %>%
+  setView(lng = 20, lat = 0, zoom = 3) %>% # Centre  map on Africa
+  
+  addScaleBar ( position = "topright" )
+
+```
+
+
+
+
+
