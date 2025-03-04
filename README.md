@@ -3,9 +3,11 @@ SpatialR
 Moegamad Uzair Jack
 2025-02-24
 
+---
 # What spatial patterns and potential biases can be identified in the global distribution of Nightjars (Caprimulgidae) based on GBIF occurrence records, and how do human observations influence these patterns?
-
+---
 ## Mapping Nightjar Sightings with R 
+---
 
 ## About  
 
