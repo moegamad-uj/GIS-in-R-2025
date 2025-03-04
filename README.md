@@ -3,8 +3,9 @@ SpatialR
 Moegamad Uzair Jack
 2025-02-24
 
-## What spatial patterns and potential biases emerge in the global distribution of Nightjar (Caprimulgidae) species based on GBIF occurrence records?
-# Mapping Nightjar Sightings with R 
+# What spatial patterns and potential biases can be identified in the global distribution of Nightjars (Caprimulgidae) based on GBIF occurrence records, and how do human observations influence these patterns?
+
+## Mapping Nightjar Sightings with R 
 
 ## About  
 
